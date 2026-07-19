@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { apiSuccess, errors } from "@/lib/api-response";
 import { canEdit, canManage, canView, resolveRole } from "@/lib/permissions";
+import { Prisma } from "@prisma/client";
 
 type Params = { params: Promise<{ documentId: string }> };
 
@@ -62,7 +63,7 @@ export async function PATCH(req: Request, { params }: Params) {
       where: { id: documentId },
       data: {
         ...(parsed.data.title && { title: parsed.data.title }),
-        ...(parsed.data.content !== undefined && { content: parsed.data.content as any }),
+        ...(parsed.data.content !== undefined && { content: parsed.data.content as Prisma.InputJsonValue }),
       },
     });
 

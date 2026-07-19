@@ -27,13 +27,11 @@ function fromBase64(str: string) {
 
 export function Editor({ documentId, initialContent }: EditorProps) {
   const [syncState, setSyncState] = useState<SyncState>("Saved locally");
-  const ydocRef = useRef<Y.Doc>(new Y.Doc());
+  const [ydoc] = useState(() => new Y.Doc());
   const providerRef = useRef<IndexeddbPersistence | null>(null);
   const isDirtyRef = useRef(false);
 
   useEffect(() => {
-    const ydoc = ydocRef.current;
-
     // Apply initial server state if provided and not yet initialized locally
     if (initialContent) {
       try {
@@ -62,7 +60,7 @@ export function Editor({ documentId, initialContent }: EditorProps) {
       provider.destroy();
       ydoc.destroy();
     };
-  }, [documentId, initialContent]);
+  }, [documentId, initialContent, ydoc]);
 
   const editor = useEditor({
     extensions: [
@@ -73,7 +71,7 @@ export function Editor({ documentId, initialContent }: EditorProps) {
         placeholder: "Start typing here...",
       }),
       Collaboration.configure({
-        document: ydocRef.current,
+        document: ydoc,
       }),
     ],
     editorProps: {
@@ -92,7 +90,7 @@ export function Editor({ documentId, initialContent }: EditorProps) {
 
       setSyncState("Syncing");
       try {
-        const stateVector = Y.encodeStateAsUpdate(ydocRef.current);
+        const stateVector = Y.encodeStateAsUpdate(ydoc);
         const base64Content = toBase64(stateVector);
 
         const res = await fetch(`/api/documents/${documentId}`, {
@@ -112,7 +110,7 @@ export function Editor({ documentId, initialContent }: EditorProps) {
     }, 5000); // Try to sync every 5 seconds
 
     return () => clearInterval(syncInterval);
-  }, [documentId]);
+  }, [documentId, ydoc]);
 
   return (
     <div className="flex flex-col gap-4">

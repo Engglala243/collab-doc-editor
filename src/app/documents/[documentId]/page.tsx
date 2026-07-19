@@ -38,7 +38,7 @@ export default async function DocumentPage({
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold">Access Denied</h1>
-          <p className="text-slate-500">You don't have permission to view this document.</p>
+          <p className="text-slate-500">You don&apos;t have permission to view this document.</p>
         </div>
       </div>
     );

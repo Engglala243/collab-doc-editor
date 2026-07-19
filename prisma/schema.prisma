@@ -1,13 +1,58 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  OWNER
+  EDITOR
+  VIEWER
+}
+
+model User {
+  id          String           @id @default(cuid())
+  name        String
+  email       String           @unique
+  password    String
+  documents   Document[]       @relation("DocumentOwner")
+  memberships DocumentMember[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@map("users")
+}
+
+model Document {
+  id        String           @id @default(cuid())
+  title     String
+  content   Json             @default("{}")
+  ownerId   String
+  owner     User             @relation("DocumentOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members   DocumentMember[]
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@index([ownerId])
+  @@index([updatedAt])
+  @@map("documents")
+}
+
+model DocumentMember {
+  id         String   @id @default(cuid())
+  documentId String
+  userId     String
+  role       Role
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([documentId, userId])
+  @@index([documentId])
+  @@index([userId])
+  @@map("document_members")
 }

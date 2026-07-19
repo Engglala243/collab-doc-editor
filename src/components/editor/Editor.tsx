@@ -4,11 +4,13 @@ import { useEffect, useState, useRef } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Collaboration from "@tiptap/extension-collaboration";
+import CollaborationCursor from "@tiptap/extension-collaboration-cursor";
 import Placeholder from "@tiptap/extension-placeholder";
 import * as Y from "yjs";
 import { IndexeddbPersistence } from "y-indexeddb";
+import { WebsocketProvider } from "y-websocket";
 import { Toolbar } from "./Toolbar";
-import { Cloud, CloudOff, Loader2, CloudAlert, CloudLightning } from "lucide-react";
+import { Cloud, CloudOff, Loader2, CloudAlert, CloudLightning, Users } from "lucide-react";
 import { SyncQueue } from "@/lib/sync-queue";
 import { v4 as uuidv4 } from "uuid";
 
@@ -16,6 +18,11 @@ export type SyncState = "Saved locally" | "Unsynced changes" | "Syncing" | "Sync
 
 interface EditorProps {
   documentId: string;
+  currentUser: {
+    id: string;
+    name: string;
+    role: string;
+  };
 }
 
 function toBase64(arr: Uint8Array) {
@@ -26,10 +33,24 @@ function fromBase64(str: string) {
   return Uint8Array.from(atob(str), (c) => c.charCodeAt(0));
 }
 
-export function Editor({ documentId }: EditorProps) {
+function hashCode(str: string) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return hash;
+}
+
+const userColors = [
+  "#f783ac", "#845ef7", "#339af0", "#20c997", "#fcc419", "#ff922b", "#ff6b6b",
+];
+
+export function Editor({ documentId, currentUser }: EditorProps) {
   const [syncState, setSyncState] = useState<SyncState>("Syncing");
+  const [connectedUsers, setConnectedUsers] = useState(1);
   const [ydoc] = useState(() => new Y.Doc());
   const providerRef = useRef<IndexeddbPersistence | null>(null);
+  const wsProviderRef = useRef<WebsocketProvider | null>(null);
   const clientIdRef = useRef<string>("");
 
   useEffect(() => {
@@ -41,7 +62,7 @@ export function Editor({ documentId }: EditorProps) {
     }
     clientIdRef.current = cid;
 
-    // Connect to IndexedDB for local persistence of the full merged document
+    // 1. IndexedDB Persistence (Local Storage)
     const provider = new IndexeddbPersistence(`doc-${documentId}`, ydoc);
     providerRef.current = provider;
 
@@ -50,9 +71,26 @@ export function Editor({ documentId }: EditorProps) {
       setSyncState("Saved locally");
     });
 
+    // 2. WebSocket Provider (Live Relay)
+    const wsUrl = window.location.hostname === "localhost" ? "ws://localhost:3001" : `wss://${window.location.host}`;
+    const wsProvider = new WebsocketProvider(wsUrl, documentId, ydoc, {
+      params: { userId: currentUser.id },
+    });
+    wsProviderRef.current = wsProvider;
+
+    wsProvider.awareness.setLocalStateField("user", {
+      name: currentUser.name,
+      color: userColors[Math.abs(hashCode(currentUser.id)) % userColors.length] || "#845ef7",
+    });
+
+    wsProvider.awareness.on("change", () => {
+      setConnectedUsers(wsProvider.awareness.getStates().size);
+    });
+
+    // 3. Local Sync Queue for REST Fallback (Persistence Guarantee)
     const handleUpdate = async (update: Uint8Array, origin: unknown) => {
-      // We only queue updates that came from local typing or transactions,
-      // NOT updates that we just applied from the network sync.
+      // If origin is "remote" (from REST fetch), don't re-queue it.
+      // If origin is wsProvider (from WebSocket), WE DO QUEUE IT to guarantee it reaches the DB!
       if (origin !== "remote") {
         setSyncState("Unsynced changes");
         const payload = toBase64(update);
@@ -69,21 +107,30 @@ export function Editor({ documentId }: EditorProps) {
 
     return () => {
       ydoc.off("update", handleUpdate);
+      wsProvider.destroy();
       provider.destroy();
       ydoc.destroy();
     };
-  }, [documentId, ydoc]);
+  }, [documentId, ydoc, currentUser.id, currentUser.name]);
+
+  const isViewer = currentUser.role === "VIEWER";
 
   const editor = useEditor({
+    editable: !isViewer,
     extensions: [
       StarterKit.configure({
         undoRedo: false, // History is handled by Yjs
       }),
       Placeholder.configure({
-        placeholder: "Start typing here...",
+        placeholder: isViewer ? "You have view-only access." : "Start typing here...",
       }),
       Collaboration.configure({
         document: ydoc,
+      }),
+      CollaborationCursor.configure({
+        // eslint-disable-next-line react-hooks/refs
+        provider: wsProviderRef.current,
+        user: { name: currentUser.name, color: userColors[0] },
       }),
     ],
     editorProps: {
@@ -93,7 +140,16 @@ export function Editor({ documentId }: EditorProps) {
     },
   });
 
-  // Background Sync Loop
+  useEffect(() => {
+    if (editor && wsProviderRef.current) {
+      const ext = editor.extensionManager.extensions.find(e => e.name === 'collaborationCursor');
+      if (ext) {
+        ext.options.provider = wsProviderRef.current;
+      }
+    }
+  }, [editor]);
+
+  // Background REST Sync Loop (Phase 5)
   useEffect(() => {
     let isSyncing = false;
     
@@ -103,10 +159,6 @@ export function Editor({ documentId }: EditorProps) {
       const pendingUpdates = await SyncQueue.getPendingUpdates(documentId);
       const meta = await SyncQueue.getMeta(documentId);
       
-      // If no local updates and we recently checked for remote updates, we might still want to poll occasionally,
-      // but to save bandwidth, in a real app this would use WebSockets (Phase 5 bonus/Phase 6).
-      // Here, we just hit the endpoint if there's pending updates or periodically anyway.
-
       isSyncing = true;
       if (pendingUpdates.length > 0) {
         setSyncState("Syncing");
@@ -133,21 +185,17 @@ export function Editor({ documentId }: EditorProps) {
 
         const data = await res.json();
         
-        // 1. Remove acknowledged updates
         if (data.acknowledgedIds && data.acknowledgedIds.length > 0) {
           await SyncQueue.removeUpdates(data.acknowledgedIds);
         }
 
-        // 2. Apply remote updates
         if (data.remoteUpdates && data.remoteUpdates.length > 0) {
           for (const update of data.remoteUpdates) {
             const binaryUpdate = fromBase64(update.payload);
-            // Apply update and mark origin as 'remote' so we don't queue it back
             Y.applyUpdate(ydoc, binaryUpdate, "remote");
           }
         }
 
-        // 3. Update server sequence
         if (data.serverSequence > meta.serverSequence) {
           await SyncQueue.updateServerSequence(documentId, data.serverSequence);
         }
@@ -159,7 +207,7 @@ export function Editor({ documentId }: EditorProps) {
           setSyncState("Unsynced changes");
         }
       } catch (error) {
-        console.error("Sync error:", error);
+        console.error("REST Sync error:", error);
         if (pendingUpdates.length > 0) {
           await SyncQueue.incrementRetries(pendingUpdates.map(u => u.id));
           setSyncState("Sync failed");
@@ -167,7 +215,7 @@ export function Editor({ documentId }: EditorProps) {
       } finally {
         isSyncing = false;
       }
-    }, 5000); // Poll and push every 5 seconds
+    }, 5000);
 
     return () => clearInterval(syncInterval);
   }, [documentId, ydoc]);
@@ -175,15 +223,22 @@ export function Editor({ documentId }: EditorProps) {
   return (
     <div className="flex flex-col gap-4">
       <div className="sticky top-0 z-10 flex items-center justify-between rounded-lg border border-slate-200 bg-white/80 p-2 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-950/80">
-        <Toolbar editor={editor} />
+        {!isViewer ? <Toolbar editor={editor} /> : <div className="text-sm font-medium text-slate-500">View Only</div>}
         
-        <div className="flex items-center gap-2 px-2 text-sm text-slate-500">
-          {syncState === "Saved locally" && <Cloud className="h-4 w-4" />}
-          {syncState === "Unsynced changes" && <CloudOff className="h-4 w-4 text-orange-500" />}
-          {syncState === "Syncing" && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
-          {syncState === "Synced" && <CloudLightning className="h-4 w-4 text-green-500" />}
-          {syncState === "Sync failed" && <CloudAlert className="h-4 w-4 text-red-500" />}
-          <span className="hidden sm:inline">{syncState}</span>
+        <div className="flex items-center gap-4 px-2 text-sm text-slate-500">
+          <div className="flex items-center gap-1 bg-violet-100 text-violet-700 px-2 py-1 rounded-full dark:bg-violet-900/30 dark:text-violet-400">
+            <Users className="h-4 w-4" />
+            <span className="font-medium">{connectedUsers}</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {syncState === "Saved locally" && <Cloud className="h-4 w-4" />}
+            {syncState === "Unsynced changes" && <CloudOff className="h-4 w-4 text-orange-500" />}
+            {syncState === "Syncing" && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
+            {syncState === "Synced" && <CloudLightning className="h-4 w-4 text-green-500" />}
+            {syncState === "Sync failed" && <CloudAlert className="h-4 w-4 text-red-500" />}
+            <span className="hidden sm:inline">{syncState}</span>
+          </div>
         </div>
       </div>
 

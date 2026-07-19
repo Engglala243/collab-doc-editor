@@ -53,7 +53,14 @@ export default async function DocumentPage({
         </div>
       </div>
       
-      <Editor documentId={documentId} />
+      <Editor 
+        documentId={documentId} 
+        currentUser={{
+          id: session.user.id,
+          name: session.user.name || "Anonymous",
+          role
+        }}
+      />
     </div>
   );
 }

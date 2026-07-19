@@ -7,14 +7,14 @@ import { Editor } from "@/components/editor/Editor";
 export default async function DocumentPage({
   params,
 }: {
-  params: { documentId: string };
+  params: Promise<{ documentId: string }>;
 }) {
   const session = await auth();
   if (!session?.user?.id) {
     redirect("/login");
   }
 
-  const { documentId } = params;
+  const { documentId } = await params;
 
   // Fetch document and user's role
   const document = await prisma.document.findUnique({

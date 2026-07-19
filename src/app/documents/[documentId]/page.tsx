@@ -44,9 +44,6 @@ export default async function DocumentPage({
     );
   }
 
-  // The content is stored as a JSON value which we use as a Base64 string for Yjs
-  const initialContent = typeof document.content === "string" ? document.content : undefined;
-
   return (
     <div className="container mx-auto max-w-5xl py-8">
       <div className="mb-8 flex items-center justify-between">
@@ -56,7 +53,7 @@ export default async function DocumentPage({
         </div>
       </div>
       
-      <Editor documentId={documentId} initialContent={initialContent} />
+      <Editor documentId={documentId} />
     </div>
   );
 }

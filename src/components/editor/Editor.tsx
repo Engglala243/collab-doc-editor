@@ -9,12 +9,13 @@ import * as Y from "yjs";
 import { IndexeddbPersistence } from "y-indexeddb";
 import { Toolbar } from "./Toolbar";
 import { Cloud, CloudOff, Loader2, CloudAlert, CloudLightning } from "lucide-react";
+import { SyncQueue } from "@/lib/sync-queue";
+import { v4 as uuidv4 } from "uuid";
 
 export type SyncState = "Saved locally" | "Unsynced changes" | "Syncing" | "Synced" | "Sync failed";
 
 interface EditorProps {
   documentId: string;
-  initialContent?: string; // base64 encoded Yjs state, if any from server
 }
 
 function toBase64(arr: Uint8Array) {
@@ -25,24 +26,22 @@ function fromBase64(str: string) {
   return Uint8Array.from(atob(str), (c) => c.charCodeAt(0));
 }
 
-export function Editor({ documentId, initialContent }: EditorProps) {
-  const [syncState, setSyncState] = useState<SyncState>("Saved locally");
+export function Editor({ documentId }: EditorProps) {
+  const [syncState, setSyncState] = useState<SyncState>("Syncing");
   const [ydoc] = useState(() => new Y.Doc());
   const providerRef = useRef<IndexeddbPersistence | null>(null);
-  const isDirtyRef = useRef(false);
+  const clientIdRef = useRef<string>("");
 
   useEffect(() => {
-    // Apply initial server state if provided and not yet initialized locally
-    if (initialContent) {
-      try {
-        const update = fromBase64(initialContent);
-        Y.applyUpdate(ydoc, update);
-      } catch (e) {
-        console.error("Failed to parse initial content", e);
-      }
+    // Generate or retrieve a consistent clientId for this session
+    let cid = sessionStorage.getItem(`clientId-${documentId}`);
+    if (!cid) {
+      cid = uuidv4();
+      sessionStorage.setItem(`clientId-${documentId}`, cid);
     }
+    clientIdRef.current = cid;
 
-    // Connect to IndexedDB for local persistence
+    // Connect to IndexedDB for local persistence of the full merged document
     const provider = new IndexeddbPersistence(`doc-${documentId}`, ydoc);
     providerRef.current = provider;
 
@@ -51,16 +50,29 @@ export function Editor({ documentId, initialContent }: EditorProps) {
       setSyncState("Saved locally");
     });
 
-    ydoc.on("update", () => {
-      isDirtyRef.current = true;
-      setSyncState("Unsynced changes");
-    });
+    const handleUpdate = async (update: Uint8Array, origin: unknown) => {
+      // We only queue updates that came from local typing or transactions,
+      // NOT updates that we just applied from the network sync.
+      if (origin !== "remote") {
+        setSyncState("Unsynced changes");
+        const payload = toBase64(update);
+        await SyncQueue.addUpdate({
+          id: uuidv4(),
+          documentId,
+          clientId: clientIdRef.current,
+          payload,
+        });
+      }
+    };
+
+    ydoc.on("update", handleUpdate);
 
     return () => {
+      ydoc.off("update", handleUpdate);
       provider.destroy();
       ydoc.destroy();
     };
-  }, [documentId, initialContent, ydoc]);
+  }, [documentId, ydoc]);
 
   const editor = useEditor({
     extensions: [
@@ -83,38 +95,85 @@ export function Editor({ documentId, initialContent }: EditorProps) {
 
   // Background Sync Loop
   useEffect(() => {
+    let isSyncing = false;
+    
     const syncInterval = setInterval(async () => {
-      if (!isDirtyRef.current || !navigator.onLine) {
-        return;
+      if (isSyncing || !navigator.onLine) return;
+
+      const pendingUpdates = await SyncQueue.getPendingUpdates(documentId);
+      const meta = await SyncQueue.getMeta(documentId);
+      
+      // If no local updates and we recently checked for remote updates, we might still want to poll occasionally,
+      // but to save bandwidth, in a real app this would use WebSockets (Phase 5 bonus/Phase 6).
+      // Here, we just hit the endpoint if there's pending updates or periodically anyway.
+
+      isSyncing = true;
+      if (pendingUpdates.length > 0) {
+        setSyncState("Syncing");
       }
 
-      setSyncState("Syncing");
       try {
-        const stateVector = Y.encodeStateAsUpdate(ydoc);
-        const base64Content = toBase64(stateVector);
+        const payload = {
+          clientId: clientIdRef.current,
+          serverSequence: meta.serverSequence,
+          updates: pendingUpdates.map(u => ({
+            id: u.id,
+            sequence: u.sequence,
+            payload: u.payload
+          }))
+        };
 
-        const res = await fetch(`/api/documents/${documentId}`, {
-          method: "PATCH",
+        const res = await fetch(`/api/documents/${documentId}/sync`, {
+          method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content: base64Content }),
+          body: JSON.stringify(payload),
         });
 
         if (!res.ok) throw new Error("Sync failed");
 
-        isDirtyRef.current = false;
-        setSyncState("Synced");
+        const data = await res.json();
+        
+        // 1. Remove acknowledged updates
+        if (data.acknowledgedIds && data.acknowledgedIds.length > 0) {
+          await SyncQueue.removeUpdates(data.acknowledgedIds);
+        }
+
+        // 2. Apply remote updates
+        if (data.remoteUpdates && data.remoteUpdates.length > 0) {
+          for (const update of data.remoteUpdates) {
+            const binaryUpdate = fromBase64(update.payload);
+            // Apply update and mark origin as 'remote' so we don't queue it back
+            Y.applyUpdate(ydoc, binaryUpdate, "remote");
+          }
+        }
+
+        // 3. Update server sequence
+        if (data.serverSequence > meta.serverSequence) {
+          await SyncQueue.updateServerSequence(documentId, data.serverSequence);
+        }
+
+        const remaining = await SyncQueue.getPendingUpdates(documentId);
+        if (remaining.length === 0) {
+          setSyncState("Synced");
+        } else {
+          setSyncState("Unsynced changes");
+        }
       } catch (error) {
         console.error("Sync error:", error);
-        setSyncState("Sync failed");
+        if (pendingUpdates.length > 0) {
+          await SyncQueue.incrementRetries(pendingUpdates.map(u => u.id));
+          setSyncState("Sync failed");
+        }
+      } finally {
+        isSyncing = false;
       }
-    }, 5000); // Try to sync every 5 seconds
+    }, 5000); // Poll and push every 5 seconds
 
     return () => clearInterval(syncInterval);
   }, [documentId, ydoc]);
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Top Bar with Toolbar and Sync Status */}
       <div className="sticky top-0 z-10 flex items-center justify-between rounded-lg border border-slate-200 bg-white/80 p-2 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-950/80">
         <Toolbar editor={editor} />
         
@@ -128,7 +187,6 @@ export function Editor({ documentId, initialContent }: EditorProps) {
         </div>
       </div>
 
-      {/* Editor Area */}
       <div className="rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
         <EditorContent editor={editor} />
       </div>

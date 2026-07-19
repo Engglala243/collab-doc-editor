@@ -50,7 +50,7 @@ export function Editor({ documentId, currentUser }: EditorProps) {
   const [connectedUsers, setConnectedUsers] = useState(1);
   const [ydoc] = useState(() => new Y.Doc());
   const providerRef = useRef<IndexeddbPersistence | null>(null);
-  const wsProviderRef = useRef<WebsocketProvider | null>(null);
+  const [wsProvider, setWsProvider] = useState<WebsocketProvider | null>(null);
   const clientIdRef = useRef<string>("");
 
   useEffect(() => {
@@ -73,24 +73,23 @@ export function Editor({ documentId, currentUser }: EditorProps) {
 
     // 2. WebSocket Provider (Live Relay)
     const wsUrl = window.location.hostname === "localhost" ? "ws://localhost:3001" : `wss://${window.location.host}`;
-    const wsProvider = new WebsocketProvider(wsUrl, documentId, ydoc, {
+    const newWsProvider = new WebsocketProvider(wsUrl, documentId, ydoc, {
       params: { userId: currentUser.id },
     });
-    wsProviderRef.current = wsProvider;
 
-    wsProvider.awareness.setLocalStateField("user", {
+    newWsProvider.awareness.setLocalStateField("user", {
       name: currentUser.name,
       color: userColors[Math.abs(hashCode(currentUser.id)) % userColors.length] || "#845ef7",
     });
 
-    wsProvider.awareness.on("change", () => {
-      setConnectedUsers(wsProvider.awareness.getStates().size);
+    newWsProvider.awareness.on("change", () => {
+      setConnectedUsers(newWsProvider.awareness.getStates().size);
     });
+    
+    setWsProvider(newWsProvider);
 
     // 3. Local Sync Queue for REST Fallback (Persistence Guarantee)
     const handleUpdate = async (update: Uint8Array, origin: unknown) => {
-      // If origin is "remote" (from REST fetch), don't re-queue it.
-      // If origin is wsProvider (from WebSocket), WE DO QUEUE IT to guarantee it reaches the DB!
       if (origin !== "remote") {
         setSyncState("Unsynced changes");
         const payload = toBase64(update);
@@ -107,7 +106,7 @@ export function Editor({ documentId, currentUser }: EditorProps) {
 
     return () => {
       ydoc.off("update", handleUpdate);
-      wsProvider.destroy();
+      newWsProvider.destroy();
       provider.destroy();
       ydoc.destroy();
     };
@@ -127,11 +126,12 @@ export function Editor({ documentId, currentUser }: EditorProps) {
       Collaboration.configure({
         document: ydoc,
       }),
-      CollaborationCursor.configure({
-        // eslint-disable-next-line react-hooks/refs
-        provider: wsProviderRef.current,
-        user: { name: currentUser.name, color: userColors[0] },
-      }),
+      ...(wsProvider ? [
+        CollaborationCursor.configure({
+          provider: wsProvider,
+          user: { name: currentUser.name, color: userColors[Math.abs(hashCode(currentUser.id)) % userColors.length] || "#845ef7" },
+        })
+      ] : []),
     ],
     editorProps: {
       attributes: {
@@ -140,14 +140,6 @@ export function Editor({ documentId, currentUser }: EditorProps) {
     },
   });
 
-  useEffect(() => {
-    if (editor && wsProviderRef.current) {
-      const ext = editor.extensionManager.extensions.find(e => e.name === 'collaborationCursor');
-      if (ext) {
-        ext.options.provider = wsProviderRef.current;
-      }
-    }
-  }, [editor]);
 
   // Background REST Sync Loop (Phase 5)
   useEffect(() => {

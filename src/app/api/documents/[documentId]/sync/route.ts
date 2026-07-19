@@ -67,7 +67,7 @@ export async function POST(req: Request, { params }: Params) {
       acknowledgedIds.push(...updates.map((u) => u.id));
     } catch (e) {
       console.error("Failed to store sync updates:", e);
-      return errors.serverError("Failed to store updates");
+      return errors.serverError();
     }
   }
 

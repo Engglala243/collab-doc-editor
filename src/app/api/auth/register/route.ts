@@ -1,7 +1,7 @@
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
-import { apiSuccess, errors } from "@/lib/api-response";
+import { apiSuccess, errors as apiErrors } from "@/lib/api-response";
 
 const registerSchema = z.object({
   name: z.string().min(2).max(100),
@@ -15,14 +15,14 @@ export async function POST(req: Request) {
     const parsed = registerSchema.safeParse(body);
 
     if (!parsed.success) {
-      return errors.badRequest(parsed.error.errors[0]?.message ?? "Invalid input");
+      return apiErrors.badRequest(parsed.error.issues[0]?.message ?? "Invalid input");
     }
 
     const { name, email, password } = parsed.data;
 
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
-      return errors.badRequest("Email already registered");
+      return apiErrors.badRequest("Email already registered");
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
@@ -34,6 +34,6 @@ export async function POST(req: Request) {
 
     return apiSuccess({ user }, 201);
   } catch {
-    return errors.serverError();
+    return apiErrors.serverError();
   }
 }

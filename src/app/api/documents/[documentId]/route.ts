@@ -50,19 +50,19 @@ export async function PATCH(req: Request, { params }: Params) {
     const body = await req.json();
     const schema = z.object({
       title: z.string().min(1).max(200).optional(),
-      content: z.record(z.unknown()).optional(),
+      content: z.string().optional(),
     });
 
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
-      return errors.badRequest(parsed.error.errors[0]?.message ?? "Invalid input");
+      return errors.badRequest(parsed.error.issues[0]?.message ?? "Invalid input");
     }
 
     const updated = await prisma.document.update({
       where: { id: documentId },
       data: {
         ...(parsed.data.title && { title: parsed.data.title }),
-        ...(parsed.data.content !== undefined && { content: parsed.data.content }),
+        ...(parsed.data.content !== undefined && { content: parsed.data.content as any }),
       },
     });
 

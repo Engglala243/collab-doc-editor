@@ -31,7 +31,7 @@ export async function POST(req: Request, { params }: Params) {
     });
 
     const parsed = schema.safeParse(body);
-    if (!parsed.success) return errors.badRequest(parsed.error.errors[0]?.message ?? "Invalid");
+    if (!parsed.success) return errors.badRequest(parsed.error.issues[0]?.message ?? "Invalid");
 
     const targetUser = await prisma.user.findUnique({
       where: { email: parsed.data.email },

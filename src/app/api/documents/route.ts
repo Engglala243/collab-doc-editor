@@ -56,7 +56,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const parsed = createDocSchema.safeParse(body);
     if (!parsed.success) {
-      return errors.badRequest(parsed.error.errors[0]?.message ?? "Invalid input");
+      return errors.badRequest(parsed.error.issues[0]?.message ?? "Invalid input");
     }
 
     const document = await prisma.document.create({

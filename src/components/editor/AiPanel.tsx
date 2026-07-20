@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Sparkles, X, Loader2, ClipboardCopy, RotateCcw, Check } from "lucide-react";
 
 interface AiPanelProps {
@@ -21,6 +22,12 @@ export function AiPanel({ documentId, getEditorText, getSelectedText, onInsert }
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [accepted, setAccepted] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
+  }, []);
 
   const handleRun = async () => {
     const text = mode === "rewrite" && getSelectedText()
@@ -91,8 +98,14 @@ export function AiPanel({ documentId, getEditorText, getSelectedText, onInsert }
         AI
       </button>
 
-      {isOpen && (
-        <div className="fixed bottom-6 right-6 z-50 w-full max-w-md rounded-2xl border border-slate-200/50 bg-white/95 shadow-2xl backdrop-blur-xl dark:border-slate-700/50 dark:bg-slate-900/95">
+      {mounted && isOpen && createPortal(
+        <>
+          {/* Click-outside backdrop */}
+          <div
+            className="fixed inset-0 z-[70]"
+            onClick={() => setIsOpen(false)}
+          />
+          <div className="fixed bottom-6 right-6 z-[80] w-full max-w-md rounded-2xl border border-slate-200/50 bg-white shadow-2xl dark:border-slate-700/50 dark:bg-slate-900">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800">
             <div className="flex items-center gap-2">
@@ -189,6 +202,8 @@ export function AiPanel({ documentId, getEditorText, getSelectedText, onInsert }
             )}
           </div>
         </div>
+        </>,
+        document.body
       )}
     </>
   );

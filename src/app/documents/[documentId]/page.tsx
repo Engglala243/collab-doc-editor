@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { resolveRole } from "@/lib/permissions";
 import { Editor } from "@/components/editor/Editor";
+import { AppLayout } from "@/components/layout/AppLayout";
 
 export default async function DocumentPage({
   params,
@@ -45,9 +46,10 @@ export default async function DocumentPage({
   }
 
   return (
-    <div className="container mx-auto max-w-5xl py-8">
-      <div className="mb-8 flex items-center justify-between">
-        <div>
+    <AppLayout>
+      <div className="container mx-auto max-w-5xl py-8 px-6">
+        <div className="mb-8 flex items-center justify-between">
+          <div>
           <h1 className="text-3xl font-bold">{document.title}</h1>
           <p className="text-sm text-slate-500">Role: {role}</p>
         </div>
@@ -61,6 +63,7 @@ export default async function DocumentPage({
           role
         }}
       />
-    </div>
+      </div>
+    </AppLayout>
   );
 }

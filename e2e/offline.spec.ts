@@ -18,7 +18,7 @@ test.describe("Phase 4: Offline-First Editor", () => {
     await page.click("#register-btn");
     await Promise.race([
       page.waitForURL(/\/dashboard/, { timeout: 15000 }),
-      page.waitForSelector('.text-red-500', { state: 'visible', timeout: 15000 }).then(async (el) => {
+      page.waitForSelector('.text-red-400', { state: 'visible', timeout: 15000 }).then(async (el) => {
         if (el) {
           const text = await el.textContent();
           throw new Error("Registration failed with UI error: " + text);

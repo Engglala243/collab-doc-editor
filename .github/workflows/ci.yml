@@ -30,6 +30,8 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/collab_doc_editor_test
       NEXTAUTH_SECRET: ci-test-secret-key-minimum-32-characters
       NEXTAUTH_URL: http://localhost:3000
+      AUTH_SECRET: ci-test-secret-key-minimum-32-characters
+      AUTH_URL: http://localhost:3000
       AUTH_TRUST_HOST: "true"
       NODE_ENV: test
 

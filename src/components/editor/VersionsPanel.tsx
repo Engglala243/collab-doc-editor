@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { History, Plus, RotateCcw, X, Loader2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useEditor, EditorContent } from "@tiptap/react";
@@ -31,6 +32,11 @@ export function VersionsPanel({ documentId, onRestore, disabled }: VersionsPanel
   const [previewVersion, setPreviewVersion] = useState<Version | null>(null);
   const [previewJson, setPreviewJson] = useState<Record<string, unknown> | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const fetchVersions = async () => {
     try {
@@ -121,7 +127,7 @@ export function VersionsPanel({ documentId, onRestore, disabled }: VersionsPanel
       </button>
 
       {/* Main Timeline Modal */}
-      {isOpen && (
+      {mounted && isOpen && createPortal(
         <div className="fixed inset-0 z-50 flex justify-end bg-black/50 backdrop-blur-sm">
           <div className="w-full max-w-md bg-white p-6 shadow-xl dark:bg-slate-900 overflow-y-auto h-full flex flex-col">
             <div className="mb-6 flex items-center justify-between">
@@ -182,11 +188,12 @@ export function VersionsPanel({ documentId, onRestore, disabled }: VersionsPanel
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Preview Modal */}
-      {previewVersion && (
+      {mounted && previewVersion && createPortal(
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 lg:p-10">
           <div className="flex h-full w-full max-w-5xl flex-col rounded-xl bg-white shadow-2xl dark:bg-slate-950">
             <div className="flex items-center justify-between border-b border-slate-200 p-4 dark:border-slate-800">
@@ -232,7 +239,8 @@ export function VersionsPanel({ documentId, onRestore, disabled }: VersionsPanel
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

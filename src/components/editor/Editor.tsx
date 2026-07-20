@@ -14,6 +14,8 @@ import { Cloud, CloudOff, Loader2, CloudAlert, CloudLightning, Users } from "luc
 import { SyncQueue } from "@/lib/sync-queue";
 import { v4 as uuidv4 } from "uuid";
 
+import { VersionsPanel } from "./VersionsPanel";
+
 export type SyncState = "Saved locally" | "Unsynced changes" | "Syncing" | "Synced" | "Sync failed";
 
 interface EditorProps {
@@ -86,6 +88,7 @@ export function Editor({ documentId, currentUser }: EditorProps) {
       setConnectedUsers(newWsProvider.awareness.getStates().size);
     });
     
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setWsProvider(newWsProvider);
 
     // 3. Local Sync Queue for REST Fallback (Persistence Guarantee)
@@ -231,6 +234,18 @@ export function Editor({ documentId, currentUser }: EditorProps) {
             {syncState === "Sync failed" && <CloudAlert className="h-4 w-4 text-red-500" />}
             <span className="hidden sm:inline">{syncState}</span>
           </div>
+          
+          <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-2" />
+          
+          <VersionsPanel 
+            documentId={documentId} 
+            disabled={isViewer}
+            onRestore={(json) => {
+              if (editor) {
+                editor.commands.setContent(json);
+              }
+            }} 
+          />
         </div>
       </div>
 

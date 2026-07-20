@@ -36,6 +36,7 @@ model Document {
   members   DocumentMember[]
   updates   DocumentUpdate[]
   versions  DocumentVersion[]
+  checkpoints DocumentCheckpoint[]
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
 
@@ -89,4 +90,17 @@ model DocumentVersion {
 
   @@index([documentId])
   @@map("document_versions")
+}
+
+model DocumentCheckpoint {
+  id             String   @id @default(cuid())
+  documentId     String   @unique
+  content        String   // Base64 encoded full Yjs state vector (merged)
+  serverSequence Int      // the serverSequence this checkpoint was built up to
+  createdAt      DateTime @default(now())
+
+  document       Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@map("document_checkpoints")
 }

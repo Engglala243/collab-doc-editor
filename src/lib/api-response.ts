@@ -23,4 +23,12 @@ export const errors = {
     apiError(`${resource} not found`, 404, "not_found"),
   badRequest: (msg: string) => apiError(msg, 400, "bad_request"),
   serverError: () => apiError("Internal server error", 500, "server_error"),
+  tooManyRequests: (retryAfter = 60) =>
+    NextResponse.json(
+      { error: "rate_limited", message: "Too many requests. Please slow down." },
+      { status: 429, headers: { "Retry-After": String(retryAfter) } }
+    ),
+  payloadTooLarge: (maxBytes: number) =>
+    apiError(`Payload too large. Max allowed: ${Math.round(maxBytes / 1024)}KB`, 413, "payload_too_large"),
 };
+

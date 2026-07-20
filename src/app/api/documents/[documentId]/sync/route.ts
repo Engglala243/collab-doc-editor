@@ -3,24 +3,41 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { apiSuccess, errors } from "@/lib/api-response";
 import { canEdit, canView, resolveRole } from "@/lib/permissions";
+import { syncLimiter } from "@/lib/middleware/rate-limiter";
+import {
+  checkContentLength,
+  validateSyncUpdates,
+  SYNC_BODY_MAX_BYTES,
+} from "@/lib/middleware/body-guard";
 
 type Params = { params: Promise<{ documentId: string }> };
 
+/** Max remote updates returned per sync call — prevents huge payloads on first sync */
+const PULL_PAGE_SIZE = 100;
+
 const SyncSchema = z.object({
-  clientId: z.string(),
-  serverSequence: z.number().nonnegative(),
+  clientId: z.string().min(1).max(128),
+  serverSequence: z.number().nonnegative().int(),
   updates: z.array(
     z.object({
-      id: z.string(),
-      sequence: z.number().nonnegative(),
-      payload: z.string(), // base64
+      id: z.string().min(1).max(128),
+      sequence: z.number().nonnegative().int(),
+      payload: z.string(), // base64 — deep-validated by body-guard
     })
-  ),
+  ).max(50),
 });
 
 export async function POST(req: Request, { params }: Params) {
   const session = await auth();
   if (!session?.user?.id) return errors.unauthorized();
+
+  // ─── Rate limiting ──────────────────────────────────────────────────────────
+  const rl = syncLimiter.check(session.user.id);
+  if (!rl.allowed) return errors.tooManyRequests(rl.retryAfter);
+
+  // ─── Body size guard ────────────────────────────────────────────────────────
+  const sizeError = checkContentLength(req, SYNC_BODY_MAX_BYTES);
+  if (sizeError) return sizeError;
 
   const { documentId } = await params;
   const document = await prisma.document.findUnique({
@@ -48,11 +65,18 @@ export async function POST(req: Request, { params }: Params) {
     return errors.forbidden();
   }
 
-  // 1. Store incoming updates idempotently
+  // ─── Deep payload validation (malformed binary rejection) ───────────────────
+  if (updates.length > 0) {
+    const payloadError = validateSyncUpdates(updates);
+    if (payloadError) {
+      return errors.badRequest(payloadError.reason);
+    }
+  }
+
+  // ─── 1. Store incoming updates idempotently ─────────────────────────────────
   const acknowledgedIds: string[] = [];
   if (updates.length > 0) {
     try {
-      // Prisma createMany with skipDuplicates ensures idempotency for (documentId, clientId, sequence)
       await prisma.documentUpdate.createMany({
         data: updates.map((u) => ({
           id: u.id,
@@ -63,7 +87,6 @@ export async function POST(req: Request, { params }: Params) {
         })),
         skipDuplicates: true,
       });
-
       acknowledgedIds.push(...updates.map((u) => u.id));
     } catch (e) {
       console.error("Failed to store sync updates:", e);
@@ -71,25 +94,23 @@ export async function POST(req: Request, { params }: Params) {
     }
   }
 
-  // 2. Fetch remote updates that this client hasn't seen yet
-  // We fetch updates strictly greater than the client's last seen serverSequence
+  // ─── 2. Fetch remote updates (paginated) ────────────────────────────────────
   const remoteUpdates = await prisma.documentUpdate.findMany({
     where: {
       documentId,
       serverSequence: { gt: serverSequence },
-      clientId: { not: clientId }, // Don't send the client their own updates back
+      clientId: { not: clientId },
     },
     orderBy: { serverSequence: "asc" },
+    take: PULL_PAGE_SIZE,
   });
 
-  // Determine the new highest serverSequence to return to the client
   let maxServerSequence = serverSequence;
   if (remoteUpdates.length > 0) {
     maxServerSequence = Math.max(...remoteUpdates.map((u) => u.serverSequence));
   }
-  
-  // Also check if our own freshly inserted updates pushed the sequence higher,
-  // so the client knows what sequence they are up to.
+
+  // Check if the client's own pushes moved sequence forward
   const latestDocUpdate = await prisma.documentUpdate.findFirst({
     where: { documentId },
     orderBy: { serverSequence: "desc" },
@@ -100,9 +121,13 @@ export async function POST(req: Request, { params }: Params) {
     maxServerSequence = latestDocUpdate.serverSequence;
   }
 
+  // hasMore tells the client to re-poll immediately for the next page
+  const hasMore = remoteUpdates.length === PULL_PAGE_SIZE;
+
   return apiSuccess({
     acknowledgedIds,
     serverSequence: maxServerSequence,
+    hasMore,
     remoteUpdates: remoteUpdates.map((u) => ({
       clientId: u.clientId,
       sequence: u.sequence,
@@ -111,3 +136,4 @@ export async function POST(req: Request, { params }: Params) {
     })),
   });
 }
+

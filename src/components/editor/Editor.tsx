@@ -15,6 +15,7 @@ import { SyncQueue } from "@/lib/sync-queue";
 import { v4 as uuidv4 } from "uuid";
 
 import { VersionsPanel } from "./VersionsPanel";
+import { AiPanel } from "./AiPanel";
 
 export type SyncState = "Saved locally" | "Unsynced changes" | "Syncing" | "Synced" | "Sync failed";
 
@@ -245,6 +246,22 @@ export function Editor({ documentId, currentUser }: EditorProps) {
                 editor.commands.setContent(json);
               }
             }} 
+          />
+
+          <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-2" />
+
+          <AiPanel
+            documentId={documentId}
+            getEditorText={() => editor?.getText() ?? ""}
+            getSelectedText={() => editor?.state.doc.textBetween(
+              editor.state.selection.from,
+              editor.state.selection.to,
+            ) ?? ""}
+            onInsert={(text) => {
+              if (editor) {
+                editor.chain().focus().insertContent(text).run();
+              }
+            }}
           />
         </div>
       </div>

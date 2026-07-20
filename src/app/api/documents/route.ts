@@ -1,18 +1,29 @@
 import { z } from "zod";
+import { NextRequest } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { apiSuccess, errors } from "@/lib/api-response";
+import { apiLimiter } from "@/lib/middleware/rate-limiter";
 
 const createDocSchema = z.object({
   title: z.string().min(1).max(200),
 });
 
-// GET /api/documents — list all documents for the current user
-export async function GET() {
+const PAGE_SIZE = 20;
+
+// GET /api/documents — list all documents for the current user (cursor paginated)
+export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return errors.unauthorized();
 
+  // Rate limiting
+  const rl = apiLimiter.check(session.user.id);
+  if (!rl.allowed) return errors.tooManyRequests(rl.retryAfter);
+
   const userId = session.user.id;
+  const { searchParams } = new URL(req.url);
+  const cursor = searchParams.get("cursor") ?? undefined;
+  const limit = Math.min(parseInt(searchParams.get("limit") ?? String(PAGE_SIZE), 10), 100);
 
   const documents = await prisma.document.findMany({
     where: {
@@ -21,6 +32,8 @@ export async function GET() {
         { members: { some: { userId } } },
       ],
     },
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    take: limit + 1, // fetch one extra to determine hasMore
     include: {
       members: {
         where: { userId },
@@ -32,7 +45,11 @@ export async function GET() {
     orderBy: { updatedAt: "desc" },
   });
 
-  const result = documents.map((doc) => ({
+  const hasMore = documents.length > limit;
+  const page = hasMore ? documents.slice(0, limit) : documents;
+  const nextCursor = hasMore ? page[page.length - 1]?.id : null;
+
+  const result = page.map((doc) => ({
     id: doc.id,
     title: doc.title,
     owner: doc.owner,
@@ -42,8 +59,9 @@ export async function GET() {
     updatedAt: doc.updatedAt,
   }));
 
-  return apiSuccess({ documents: result });
+  return apiSuccess({ documents: result, nextCursor, hasMore });
 }
+
 
 // POST /api/documents — create a new document
 export async function POST(req: Request) {

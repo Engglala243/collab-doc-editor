@@ -13,6 +13,7 @@ export const env = createEnv({
     // AI (optional)
     OPENAI_API_KEY: z.string().optional(),
     GEMINI_API_KEY: z.string().optional(),
+    GEMINI_MODEL: z.string().optional(),
 
     NODE_ENV: z
       .enum(["development", "test", "production"])
@@ -30,6 +31,7 @@ export const env = createEnv({
     NEXTAUTH_URL: process.env.NEXTAUTH_URL,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+    GEMINI_MODEL: process.env.GEMINI_MODEL,
     NODE_ENV: process.env.NODE_ENV,
   },
 });

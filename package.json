@@ -8,6 +8,7 @@
     "start": "next start",
     "start:all": "concurrently \"next start\" \"node server.mjs\"",
     "lint": "eslint",
+    "postinstall": "prisma generate",
     "type-check": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

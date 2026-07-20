@@ -17,7 +17,8 @@ export const authConfig: NextAuthConfig = {
 
       if (isPublic) return true;
       if (!isLoggedIn) {
-        const loginUrl = new URL("/login", nextUrl.origin);
+        const loginUrl = nextUrl.clone();
+        loginUrl.pathname = "/login";
         loginUrl.searchParams.set("callbackUrl", nextUrl.pathname);
         return Response.redirect(loginUrl);
       }

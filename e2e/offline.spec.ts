@@ -16,8 +16,15 @@ test.describe("Phase 4: Offline-First Editor", () => {
     await page.fill("#email", TEST_USER.email);
     await page.fill("#password", TEST_USER.password);
     await page.click("#register-btn");
-
-    await expect(page).toHaveURL(/\/dashboard/);
+    await Promise.race([
+      page.waitForURL(/\/dashboard/, { timeout: 15000 }),
+      page.waitForSelector('.text-red-500', { state: 'visible', timeout: 15000 }).then(async (el) => {
+        if (el) {
+          const text = await el.textContent();
+          throw new Error("Registration failed with UI error: " + text);
+        }
+      })
+    ]);
 
     // 2. Create a Document
     await page.click("#new-doc-btn");

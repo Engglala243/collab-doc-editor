@@ -1,13 +1,15 @@
 import { test, expect } from "@playwright/test";
 
-const TEST_USER = {
-  name: "Test User",
-  email: `test-${Date.now()}@example.com`,
-  password: "password123",
-};
+
 
 test.describe("Auth + Document Flow", () => {
   test("register → login → create document → open document", async ({ page }) => {
+    const TEST_USER = {
+      name: "Test User",
+      email: `test-${Date.now()}@example.com`,
+      password: "password123",
+    };
+
     // 1. Register
     await page.goto("/register");
     await page.fill("#name", TEST_USER.name);

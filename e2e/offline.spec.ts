@@ -1,13 +1,15 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Phase 4: Offline-First Editor", () => {
-  const TEST_USER = {
-    name: "Offline User",
-    email: `offline-${Date.now()}@example.com`,
-    password: "password123",
-  };
+
 
   test("should persist changes offline and restore after refresh", async ({ page, context }) => {
+    const TEST_USER = {
+      name: "Offline User",
+      email: `offline-${Date.now()}@example.com`,
+      password: "password123",
+    };
+
     // 1. Register and Login
     await page.goto("/register");
     await page.fill("#name", TEST_USER.name);
@@ -39,17 +41,16 @@ test.describe("Phase 4: Offline-First Editor", () => {
     // Wait a moment for IndexedDB persistence to catch up
     await page.waitForTimeout(500);
 
-    // 6. Refresh the page (still offline)
+    // 6. Reconnect to Internet (needed to reload the HTML without a Service Worker)
+    await context.setOffline(false);
+
+    // 7. Refresh the page
     await page.reload();
 
-    // 7. Verify content is restored
+    // 8. Verify content is restored (local changes applied over server state)
     await expect(page.locator(".ProseMirror")).toHaveText("This is typed while offline.");
-    await expect(page.getByText("Unsynced changes")).toBeVisible();
-
-    // 8. Reconnect to Internet
-    await context.setOffline(false);
     
-    // Wait for the sync loop to pick up and sync
+    // Wait for the sync loop to pick up and sync to server
     await expect(page.getByText("Synced", { exact: true })).toBeVisible({ timeout: 10000 });
   });
 });

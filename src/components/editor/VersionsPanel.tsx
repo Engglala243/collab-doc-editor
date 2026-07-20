@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { History, Plus, RotateCcw, X, Loader2 } from "lucide-react";
+import { RiHistoryLine, RiAddLine, RiRestartLine, RiCloseLine, RiLoader4Line } from "react-icons/ri";
 import { formatDistanceToNow } from "date-fns";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -114,6 +114,11 @@ export function VersionsPanel({ documentId, onRestore, disabled }: VersionsPanel
     editable: false,
     extensions: [StarterKit],
     content: previewJson,
+    editorProps: {
+      attributes: {
+        class: "prose prose-invert max-w-none focus:outline-none text-[#e5e5e5]",
+      },
+    },
   }, [previewJson]);
 
   return (
@@ -121,20 +126,20 @@ export function VersionsPanel({ documentId, onRestore, disabled }: VersionsPanel
       <button
         onClick={() => setIsOpen(true)}
         disabled={disabled}
-        className="flex items-center gap-2 rounded-md bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-200 disabled:opacity-50 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+        className="flex items-center gap-1.5 rounded-xl bg-[#262626] border border-[#404040]/50 px-3 py-1.5 text-[14px] font-medium text-[#e5e5e5] hover:bg-[#333333] disabled:opacity-50 transition-colors"
       >
-        <History className="h-4 w-4" />
+        <RiHistoryLine className="h-4 w-4" />
         History
       </button>
 
       {/* Main Timeline Modal */}
       {mounted && isOpen && createPortal(
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/50 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-white p-6 shadow-xl dark:bg-slate-900 overflow-y-auto h-full flex flex-col">
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-[#171717] border-l border-[#262626] p-6 shadow-2xl overflow-y-auto h-full flex flex-col">
             <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-xl font-bold">Version History</h2>
-              <button onClick={() => setIsOpen(false)} className="rounded-full p-2 hover:bg-slate-100 dark:hover:bg-slate-800">
-                <X className="h-5 w-5" />
+              <h2 className="text-[20px] font-bold text-white tracking-tight">Version History</h2>
+              <button onClick={() => setIsOpen(false)} className="rounded-full p-2 hover:bg-[#262626] text-[#a1a1aa] transition-colors">
+                <RiCloseLine className="h-5 w-5" />
               </button>
             </div>
 
@@ -145,14 +150,14 @@ export function VersionsPanel({ documentId, onRestore, disabled }: VersionsPanel
                   placeholder="Snapshot name..."
                   value={newVersionName}
                   onChange={(e) => setNewVersionName(e.target.value)}
-                  className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
+                  className="flex-1 rounded-xl border border-[#404040]/50 bg-[#262626] px-4 py-2.5 text-[14px] text-white placeholder-[#737373] focus:border-[#e60000] focus:outline-none transition-colors"
                 />
                 <button
                   type="submit"
                   disabled={saving || !newVersionName.trim()}
-                  className="flex items-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                  className="flex items-center gap-2 rounded-xl bg-[#e60000] px-4 py-2.5 text-[14px] font-semibold text-white hover:bg-[#cc0000] disabled:opacity-50 transition-colors"
                 >
-                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                  {saving ? <RiLoader4Line className="h-4 w-4 animate-spin" /> : <RiAddLine className="h-4 w-4" />}
                   Save
                 </button>
               </form>
@@ -161,25 +166,25 @@ export function VersionsPanel({ documentId, onRestore, disabled }: VersionsPanel
             <div className="flex-1 overflow-y-auto">
               {loading ? (
                 <div className="flex h-32 items-center justify-center">
-                  <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+                  <RiLoader4Line className="h-6 w-6 animate-spin text-[#737373]" />
                 </div>
               ) : versions.length === 0 ? (
-                <p className="text-center text-sm text-slate-500 mt-10">No versions saved yet.</p>
+                <p className="text-center text-[14px] text-[#a1a1aa] mt-10">No versions saved yet.</p>
               ) : (
                 <div className="space-y-4">
                   {versions.map((v) => (
-                    <div key={v.id} className="rounded-lg border border-slate-200 p-4 dark:border-slate-800">
+                    <div key={v.id} className="rounded-2xl border border-[#262626] bg-[#0a0a0a] p-5">
                       <div className="mb-2 flex items-center justify-between">
-                        <h3 className="font-semibold text-slate-900 dark:text-white">{v.name}</h3>
-                        <span className="text-xs text-slate-500">
+                        <h3 className="font-semibold text-white text-[15px]">{v.name}</h3>
+                        <span className="text-[12px] text-[#a1a1aa]">
                           {formatDistanceToNow(new Date(v.createdAt), { addSuffix: true })}
                         </span>
                       </div>
-                      <p className="mb-4 text-xs text-slate-500">Saved by {v.user.name}</p>
+                      <p className="mb-4 text-[13px] text-[#a1a1aa]">Saved by <span className="text-[#e5e5e5]">{v.user.name}</span></p>
                       
                       <button
                         onClick={() => handlePreview(v)}
-                        className="w-full rounded-md bg-slate-100 py-2 text-sm font-medium hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700"
+                        className="w-full rounded-xl bg-[#262626] py-2 text-[14px] font-medium text-[#e5e5e5] hover:bg-[#333333] transition-colors border border-[#404040]/50"
                       >
                         Preview
                       </button>
@@ -195,36 +200,34 @@ export function VersionsPanel({ documentId, onRestore, disabled }: VersionsPanel
 
       {/* Preview Modal */}
       {mounted && previewVersion && createPortal(
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 lg:p-10">
-          <div className="flex h-full w-full max-w-5xl flex-col rounded-xl bg-white shadow-2xl dark:bg-slate-950">
-            <div className="flex items-center justify-between border-b border-slate-200 p-4 dark:border-slate-800">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 lg:p-10">
+          <div className="flex h-full w-full max-w-5xl flex-col rounded-2xl bg-[#171717] border border-[#262626] shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[#262626] p-5">
               <div>
-                <h2 className="text-lg font-bold">Preview: {previewVersion.name}</h2>
-                <p className="text-xs text-slate-500">
-                  {new Date(previewVersion.createdAt).toLocaleString()} by {previewVersion.user.name}
+                <h2 className="text-[20px] font-bold text-white">Preview: {previewVersion.name}</h2>
+                <p className="text-[13px] text-[#a1a1aa] mt-1">
+                  {new Date(previewVersion.createdAt).toLocaleString()} by <span className="text-[#e5e5e5]">{previewVersion.user.name}</span>
                 </p>
               </div>
-              <button onClick={() => setPreviewVersion(null)} className="rounded-full p-2 hover:bg-slate-100 dark:hover:bg-slate-800">
-                <X className="h-5 w-5" />
+              <button onClick={() => setPreviewVersion(null)} className="rounded-full p-2 hover:bg-[#262626] text-[#a1a1aa] transition-colors">
+                <RiCloseLine className="h-6 w-6" />
               </button>
             </div>
             
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto p-8 bg-[#0a0a0a]">
               {previewLoading ? (
                 <div className="flex h-full items-center justify-center">
-                  <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+                  <RiLoader4Line className="h-8 w-8 animate-spin text-[#737373]" />
                 </div>
               ) : (
-                <div className="prose prose-slate dark:prose-invert max-w-none">
-                  <EditorContent editor={previewEditor} />
-                </div>
+                <EditorContent editor={previewEditor} />
               )}
             </div>
 
-            <div className="flex items-center justify-end gap-3 border-t border-slate-200 p-4 dark:border-slate-800">
+            <div className="flex items-center justify-end gap-3 border-t border-[#262626] p-5">
               <button
                 onClick={() => setPreviewVersion(null)}
-                className="rounded-md px-4 py-2 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="rounded-xl px-5 py-2.5 text-[14px] font-medium text-[#e5e5e5] hover:bg-[#262626] border border-transparent transition-colors"
               >
                 Cancel
               </button>
@@ -232,9 +235,9 @@ export function VersionsPanel({ documentId, onRestore, disabled }: VersionsPanel
                 <button
                   onClick={confirmRestore}
                   disabled={previewLoading}
-                  className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                  className="flex items-center gap-2 rounded-xl bg-[#e60000] px-5 py-2.5 text-[14px] font-semibold text-white hover:bg-[#cc0000] disabled:opacity-50 transition-colors"
                 >
-                  <RotateCcw className="h-4 w-4" />
+                  <RiRestartLine className="h-4 w-4" />
                   Restore this version
                 </button>
               )}

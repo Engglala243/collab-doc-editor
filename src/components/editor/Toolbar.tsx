@@ -1,5 +1,13 @@
 import { type Editor } from "@tiptap/react";
-import { Bold, Italic, Strikethrough, Heading1, Heading2, List, ListOrdered } from "lucide-react";
+import { 
+  RiBold, 
+  RiItalic, 
+  RiStrikethrough, 
+  RiH1, 
+  RiH2, 
+  RiListUnordered, 
+  RiListOrdered 
+} from "react-icons/ri";
 
 interface ToolbarProps {
   editor: Editor | null;
@@ -18,76 +26,69 @@ export function Toolbar({ editor }: ToolbarProps) {
   const toggleBulletList = () => editor.chain().focus().toggleBulletList().run();
   const toggleOrderedList = () => editor.chain().focus().toggleOrderedList().run();
 
+  const buttonClass = (isActive: boolean) => 
+    `rounded-lg p-2 transition-colors ${
+      isActive 
+        ? "bg-[#262626] text-white" 
+        : "text-[#a1a1aa] hover:bg-[#262626] hover:text-[#e5e5e5]"
+    }`;
+
   return (
-    <div className="flex flex-wrap items-center gap-1 rounded-md border border-slate-200 bg-white p-1 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+    <div className="flex flex-wrap items-center gap-1">
       <button
         onClick={toggleBold}
-        className={`rounded p-2 hover:bg-slate-100 dark:hover:bg-slate-800 ${
-          editor.isActive("bold") ? "bg-slate-200 text-slate-900 dark:bg-slate-800 dark:text-slate-50" : "text-slate-500"
-        }`}
+        className={buttonClass(editor.isActive("bold"))}
         title="Bold"
       >
-        <Bold className="h-4 w-4" />
+        <RiBold className="h-4 w-4" />
       </button>
       <button
         onClick={toggleItalic}
-        className={`rounded p-2 hover:bg-slate-100 dark:hover:bg-slate-800 ${
-          editor.isActive("italic") ? "bg-slate-200 text-slate-900 dark:bg-slate-800 dark:text-slate-50" : "text-slate-500"
-        }`}
+        className={buttonClass(editor.isActive("italic"))}
         title="Italic"
       >
-        <Italic className="h-4 w-4" />
+        <RiItalic className="h-4 w-4" />
       </button>
       <button
         onClick={toggleStrike}
-        className={`rounded p-2 hover:bg-slate-100 dark:hover:bg-slate-800 ${
-          editor.isActive("strike") ? "bg-slate-200 text-slate-900 dark:bg-slate-800 dark:text-slate-50" : "text-slate-500"
-        }`}
+        className={buttonClass(editor.isActive("strike"))}
         title="Strikethrough"
       >
-        <Strikethrough className="h-4 w-4" />
+        <RiStrikethrough className="h-4 w-4" />
       </button>
 
-      <div className="mx-1 h-5 w-[1px] bg-slate-200 dark:bg-slate-800" />
+      <div className="mx-1.5 h-6 w-[1px] bg-[#404040]/50" />
 
       <button
         onClick={toggleH1}
-        className={`rounded p-2 hover:bg-slate-100 dark:hover:bg-slate-800 ${
-          editor.isActive("heading", { level: 1 }) ? "bg-slate-200 text-slate-900 dark:bg-slate-800 dark:text-slate-50" : "text-slate-500"
-        }`}
+        className={buttonClass(editor.isActive("heading", { level: 1 }))}
         title="Heading 1"
       >
-        <Heading1 className="h-4 w-4" />
+        <RiH1 className="h-4 w-4" />
       </button>
       <button
         onClick={toggleH2}
-        className={`rounded p-2 hover:bg-slate-100 dark:hover:bg-slate-800 ${
-          editor.isActive("heading", { level: 2 }) ? "bg-slate-200 text-slate-900 dark:bg-slate-800 dark:text-slate-50" : "text-slate-500"
-        }`}
+        className={buttonClass(editor.isActive("heading", { level: 2 }))}
         title="Heading 2"
       >
-        <Heading2 className="h-4 w-4" />
+        <RiH2 className="h-4 w-4" />
       </button>
 
-      <div className="mx-1 h-5 w-[1px] bg-slate-200 dark:bg-slate-800" />
+      <div className="mx-1.5 h-6 w-[1px] bg-[#404040]/50" />
 
       <button
         onClick={toggleBulletList}
-        className={`rounded p-2 hover:bg-slate-100 dark:hover:bg-slate-800 ${
-          editor.isActive("bulletList") ? "bg-slate-200 text-slate-900 dark:bg-slate-800 dark:text-slate-50" : "text-slate-500"
-        }`}
+        className={buttonClass(editor.isActive("bulletList"))}
         title="Bullet List"
       >
-        <List className="h-4 w-4" />
+        <RiListUnordered className="h-4 w-4" />
       </button>
       <button
         onClick={toggleOrderedList}
-        className={`rounded p-2 hover:bg-slate-100 dark:hover:bg-slate-800 ${
-          editor.isActive("orderedList") ? "bg-slate-200 text-slate-900 dark:bg-slate-800 dark:text-slate-50" : "text-slate-500"
-        }`}
+        className={buttonClass(editor.isActive("orderedList"))}
         title="Ordered List"
       >
-        <ListOrdered className="h-4 w-4" />
+        <RiListOrdered className="h-4 w-4" />
       </button>
     </div>
   );

@@ -4,6 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
+import { RiFileList3Fill } from "react-icons/ri";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Label } from "@/components/ui/Label";
+import { Card } from "@/components/ui/Card";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -18,106 +23,107 @@ export default function RegisterPage() {
     setLoading(true);
     setError("");
 
-    const res = await fetch("/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password }),
-    });
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password }),
+      });
 
-    const data = await res.json();
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.message || "Registration failed");
+        setLoading(false);
+        return;
+      }
 
-    if (!res.ok) {
-      setError(data.message ?? "Registration failed");
+      await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
+
+      router.push("/dashboard");
+      router.refresh();
+    } catch {
+      setError("An unexpected error occurred");
       setLoading(false);
-      return;
     }
-
-    // Auto sign-in after registration
-    await signIn("credentials", { email, password, redirect: false });
-    router.push("/dashboard");
-    router.refresh();
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-neutral-950 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] px-4 py-8">
       <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-violet-600 mb-4">
-            <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
+        <div className="text-center mb-8 flex flex-col items-center">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#e60000] mb-4 shadow-lg shadow-[#e60000]/20">
+            <RiFileList3Fill className="w-7 h-7 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white">CollabDocs</h1>
-          <p className="text-neutral-400 text-sm mt-1">Create your account</p>
+          <h1 className="text-[28px] font-bold text-white tracking-tight">Create an account</h1>
+          <p className="text-[#a1a1aa] text-[15px] mt-1.5">Join CollabDocs today</p>
         </div>
 
-        {/* Card */}
-        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-8 shadow-2xl">
+        <Card className="sm:p-10">
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-neutral-300 mb-1.5">Full Name</label>
-              <input
+              <Label htmlFor="name">Full Name</Label>
+              <Input
                 id="name"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="John Doe"
                 required
-                className="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-neutral-300 mb-1.5">Email</label>
-              <input
+              <Label htmlFor="email">Email</Label>
+              <Input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 required
-                className="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-neutral-300 mb-1.5">Password</label>
-              <input
+              <Label htmlFor="password">Password</Label>
+              <Input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Min 6 characters"
+                placeholder="••••••••"
                 required
                 minLength={6}
-                className="w-full px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition"
               />
             </div>
 
             {error && (
-              <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm px-4 py-3 rounded-lg">
+              <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm px-4 py-3 rounded-xl">
                 {error}
               </div>
             )}
 
-            <button
+            <Button
               id="register-btn"
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 px-4 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors"
+              className="w-full mt-2"
             >
-              {loading ? "Creating account..." : "Create account"}
-            </button>
+              {loading ? "Creating account..." : "Sign up"}
+            </Button>
           </form>
 
-          <p className="text-center text-neutral-400 text-sm mt-6">
+          <p className="text-center text-[#a1a1aa] text-[15px] mt-8">
             Already have an account?{" "}
-            <Link href="/login" className="text-violet-400 hover:text-violet-300 font-medium transition-colors">
+            <Link href="/login" className="text-[#e60000] hover:text-[#cc0000] font-medium transition-colors">
               Sign in
             </Link>
           </p>
-        </div>
+        </Card>
       </div>
     </div>
   );

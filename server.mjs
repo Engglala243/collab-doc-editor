@@ -16,9 +16,9 @@
 
 import { WebSocketServer } from "ws";
 import http from "http";
-import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "@prisma/client";
 import url from "url";
 import { readFileSync } from "fs";
 import path from "path";
@@ -39,7 +39,8 @@ try {
   }
 } catch { /* .env not found — fine in production */ }
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const connectionString = `${process.env.DATABASE_URL}`;
+const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 const server = http.createServer();

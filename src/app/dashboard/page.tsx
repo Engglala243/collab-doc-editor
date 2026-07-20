@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { RiAddLine, RiFileList3Line } from "react-icons/ri";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Card } from "@/components/ui/Card";
 
 type Document = {
   id: string;
@@ -14,9 +18,9 @@ type Document = {
 };
 
 const roleColors = {
-  OWNER: "bg-violet-500/20 text-violet-300 border-violet-500/30",
-  EDITOR: "bg-blue-500/20 text-blue-300 border-blue-500/30",
-  VIEWER: "bg-neutral-500/20 text-neutral-400 border-neutral-500/30",
+  OWNER: "bg-[#e60000]/10 text-[#e60000] border-[#e60000]/20",
+  EDITOR: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+  VIEWER: "bg-[#262626] text-[#a1a1aa] border-[#404040]",
 };
 
 export default function DashboardPage() {
@@ -72,33 +76,28 @@ export default function DashboardPage() {
 
   return (
     <AppLayout>
-      <div className="max-w-5xl mx-auto px-6 py-10">
-        {/* Header */}
+      <div className="max-w-6xl mx-auto px-6 py-10">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-white">My Documents</h1>
-            <p className="text-neutral-400 text-sm mt-1">
+            <h1 className="text-[28px] font-bold text-white tracking-tight">My Documents</h1>
+            <p className="text-[#a1a1aa] text-[15px] mt-1">
               {documents.length} document{documents.length !== 1 ? "s" : ""}
             </p>
           </div>
-          <button
+          <Button
             id="new-doc-btn"
             onClick={() => setShowNew(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold rounded-lg transition-colors"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
+            <RiAddLine className="w-5 h-5" />
             New Document
-          </button>
+          </Button>
         </div>
 
-        {/* New Document Form */}
         {showNew && (
-          <div className="mb-6 bg-neutral-900 border border-neutral-700 rounded-xl p-5">
-            <h2 className="text-sm font-semibold text-neutral-300 mb-3">New Document</h2>
+          <Card className="mb-8 p-6">
+            <h2 className="text-[15px] font-semibold text-[#e5e5e5] mb-4">New Document</h2>
             <form onSubmit={createDocument} className="flex gap-3">
-              <input
+              <Input
                 id="doc-title-input"
                 type="text"
                 value={newTitle}
@@ -106,84 +105,81 @@ export default function DashboardPage() {
                 placeholder="Document title..."
                 autoFocus
                 required
-                className="flex-1 px-4 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm transition"
+                className="flex-1"
               />
-              <button
+              <Button
                 id="create-doc-btn"
                 type="submit"
                 disabled={creating}
-                className="px-4 py-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
               >
                 {creating ? "Creating..." : "Create"}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="secondary"
                 onClick={() => { setShowNew(false); setNewTitle(""); }}
-                className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-sm rounded-lg transition-colors"
               >
                 Cancel
-              </button>
+              </Button>
             </form>
-            {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
-          </div>
+            {error && <p className="text-red-400 text-sm mt-3">{error}</p>}
+          </Card>
         )}
 
-        {/* Documents List */}
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-36 bg-neutral-900 border border-neutral-800 rounded-xl animate-pulse" />
+              <div key={i} className="h-40 bg-[#171717] border border-[#262626] rounded-2xl animate-pulse" />
             ))}
           </div>
         ) : documents.length === 0 ? (
-          <div className="text-center py-24">
-            <div className="w-16 h-16 rounded-2xl bg-neutral-900 border border-neutral-800 flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-neutral-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
+          <div className="text-center py-24 bg-[#171717] border border-[#262626] rounded-3xl">
+            <div className="w-16 h-16 rounded-2xl bg-[#262626] border border-[#404040]/50 flex items-center justify-center mx-auto mb-5">
+              <RiFileList3Line className="w-8 h-8 text-[#737373]" />
             </div>
-            <p className="text-neutral-500 text-sm">No documents yet. Create your first one!</p>
+            <p className="text-[#a1a1aa] text-[15px]">No documents yet. Create your first one!</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {documents.map((doc) => (
               <div
                 key={doc.id}
-                className="group bg-neutral-900 border border-neutral-800 hover:border-neutral-700 rounded-xl p-5 flex flex-col gap-3 transition-all hover:shadow-lg hover:shadow-black/20"
+                className="group bg-[#171717] border border-[#262626] hover:border-[#404040] rounded-2xl p-6 flex flex-col gap-4 transition-all hover:shadow-xl shadow-black/20"
               >
-                <div className="flex items-start justify-between gap-2">
+                <div className="flex items-start justify-between gap-3">
                   <Link
                     href={`/documents/${doc.id}`}
                     id={`doc-${doc.id}`}
-                    className="font-semibold text-white hover:text-violet-300 transition-colors line-clamp-2 flex-1"
+                    className="font-bold text-[18px] text-white hover:text-[#ff4d4d] transition-colors line-clamp-2 flex-1 tracking-tight"
                   >
                     {doc.title}
                   </Link>
-                  <span className={`shrink-0 text-xs px-2 py-0.5 rounded-full border font-medium ${roleColors[doc.role]}`}>
+                  <span className={`shrink-0 text-[11px] uppercase tracking-wider px-2.5 py-1 rounded-md border font-bold ${roleColors[doc.role]}`}>
                     {doc.role}
                   </span>
                 </div>
 
-                <div className="text-xs text-neutral-500 space-y-1">
-                  <p>By {doc.owner.name}</p>
+                <div className="text-[13px] text-[#a1a1aa] space-y-1.5">
+                  <p>By <span className="text-[#e5e5e5]">{doc.owner.name}</span></p>
                   <p>Updated {new Date(doc.updatedAt).toLocaleDateString()}</p>
                   <p>{doc.memberCount} member{doc.memberCount !== 1 ? "s" : ""}</p>
                 </div>
 
-                <div className="flex gap-2 mt-auto pt-2 border-t border-neutral-800">
+                <div className="flex gap-2 mt-auto pt-4 border-t border-[#262626]">
                   <Link
                     href={`/documents/${doc.id}`}
-                    className="flex-1 text-center text-xs py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-lg transition-colors"
+                    className="flex-1 text-center text-[14px] font-medium py-2 bg-[#262626] hover:bg-[#333333] text-[#e5e5e5] rounded-xl transition-colors border border-[#404040]/50"
                   >
                     Open
                   </Link>
                   {doc.role === "OWNER" && (
-                    <button
+                    <Button
+                      variant="danger"
                       onClick={() => deleteDocument(doc.id)}
-                      className="text-xs py-1.5 px-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors"
+                      className="px-4 py-2"
                     >
                       Delete
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>

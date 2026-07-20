@@ -10,7 +10,7 @@ import * as Y from "yjs";
 import { IndexeddbPersistence } from "y-indexeddb";
 import { WebsocketProvider } from "y-websocket";
 import { Toolbar } from "./Toolbar";
-import { Cloud, CloudOff, Loader2, CloudAlert, CloudLightning, Users } from "lucide-react";
+import { RiCloudLine, RiCloudOffLine, RiLoader4Line, RiErrorWarningLine, RiFlashlightLine, RiGroupLine } from "react-icons/ri";
 import { SyncQueue } from "@/lib/sync-queue";
 import { v4 as uuidv4 } from "uuid";
 
@@ -139,7 +139,7 @@ export function Editor({ documentId, currentUser }: EditorProps) {
     ],
     editorProps: {
       attributes: {
-        class: "prose prose-slate dark:prose-invert max-w-none min-h-[500px] focus:outline-none p-4",
+        class: "prose prose-invert max-w-none min-h-[500px] focus:outline-none p-6 text-[#e5e5e5]",
       },
     },
   });
@@ -217,26 +217,26 @@ export function Editor({ documentId, currentUser }: EditorProps) {
   }, [documentId, ydoc]);
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="sticky top-0 z-10 flex items-center justify-between rounded-lg border border-slate-200 bg-white/80 p-2 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-950/80">
-        {!isViewer ? <Toolbar editor={editor} /> : <div className="text-sm font-medium text-slate-500">View Only</div>}
+    <div className="flex flex-col h-full bg-[#0a0a0a]">
+      <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between border-b border-[#262626] bg-[#171717] p-3 gap-3">
+        {!isViewer ? <Toolbar editor={editor} /> : <div className="text-[14px] font-medium text-[#a1a1aa] px-2">View Only</div>}
         
-        <div className="flex items-center gap-4 px-2 text-sm text-slate-500">
-          <div className="flex items-center gap-1 bg-violet-100 text-violet-700 px-2 py-1 rounded-full dark:bg-violet-900/30 dark:text-violet-400">
-            <Users className="h-4 w-4" />
-            <span className="font-medium">{connectedUsers}</span>
+        <div className="flex items-center gap-4 px-2 text-[14px] text-[#a1a1aa]">
+          <div className="flex items-center gap-1.5 bg-[#262626] text-[#e5e5e5] px-3 py-1.5 rounded-xl border border-[#404040]/50">
+            <RiGroupLine className="h-4 w-4" />
+            <span className="font-semibold">{connectedUsers}</span>
           </div>
 
           <div className="flex items-center gap-2">
-            {syncState === "Saved locally" && <Cloud className="h-4 w-4" />}
-            {syncState === "Unsynced changes" && <CloudOff className="h-4 w-4 text-orange-500" />}
-            {syncState === "Syncing" && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
-            {syncState === "Synced" && <CloudLightning className="h-4 w-4 text-green-500" />}
-            {syncState === "Sync failed" && <CloudAlert className="h-4 w-4 text-red-500" />}
-            <span className="hidden sm:inline">{syncState}</span>
+            {syncState === "Saved locally" && <RiCloudLine className="h-4 w-4 text-[#a1a1aa]" />}
+            {syncState === "Unsynced changes" && <RiCloudOffLine className="h-4 w-4 text-orange-500" />}
+            {syncState === "Syncing" && <RiLoader4Line className="h-4 w-4 animate-spin text-blue-500" />}
+            {syncState === "Synced" && <RiFlashlightLine className="h-4 w-4 text-green-500" />}
+            {syncState === "Sync failed" && <RiErrorWarningLine className="h-4 w-4 text-[#e60000]" />}
+            <span className="hidden sm:inline font-medium">{syncState}</span>
           </div>
           
-          <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-2" />
+          <div className="h-6 w-px bg-[#404040]/50 mx-1" />
           
           <VersionsPanel 
             documentId={documentId} 
@@ -248,7 +248,7 @@ export function Editor({ documentId, currentUser }: EditorProps) {
             }} 
           />
 
-          <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-2" />
+          <div className="h-6 w-px bg-[#404040]/50 mx-1" />
 
           <AiPanel
             documentId={documentId}
@@ -266,7 +266,7 @@ export function Editor({ documentId, currentUser }: EditorProps) {
         </div>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
+      <div className="bg-[#0a0a0a]">
         <EditorContent editor={editor} />
       </div>
     </div>

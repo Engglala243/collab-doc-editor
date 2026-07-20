@@ -33,7 +33,8 @@ export async function POST(req: Request) {
     });
 
     return apiSuccess({ user }, 201);
-  } catch {
+  } catch (error) {
+    console.error("Register Error:", error);
     return apiErrors.serverError();
   }
 }

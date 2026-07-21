@@ -31,11 +31,11 @@ export async function sendDocumentInviteEmail({
   inviterEmail,
 }: SendInviteParams) {
   const getBaseUrl = () => {
-    if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
-    if (process.env.NEXTAUTH_URL) return process.env.NEXTAUTH_URL;
+    if (process.env.NEXT_PUBLIC_APP_URL && !process.env.NEXT_PUBLIC_APP_URL.includes("localhost")) return process.env.NEXT_PUBLIC_APP_URL;
     if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
     if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-    return "http://localhost:3000";
+    if (process.env.NEXTAUTH_URL && !process.env.NEXTAUTH_URL.includes("localhost")) return process.env.NEXTAUTH_URL;
+    return process.env.NEXTAUTH_URL || "http://localhost:3000";
   };
 
   const documentUrl = `${getBaseUrl()}/documents/${documentId}`;

@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { apiSuccess, errors } from "@/lib/api-response";
 import { canManage, resolveRole } from "@/lib/permissions";
+import { sendDocumentInviteEmail } from "@/lib/mail";
 
 type Params = { params: Promise<{ documentId: string }> };
 
@@ -47,6 +48,16 @@ export async function POST(req: Request, { params }: Params) {
       update: { role: parsed.data.role },
       include: { user: { select: { id: true, name: true, email: true } } },
     });
+
+    // Send email notification in the background
+    sendDocumentInviteEmail({
+      toEmail: targetUser.email,
+      documentTitle: document.title,
+      documentId: document.id,
+      role: parsed.data.role,
+      inviterName: session.user.name || undefined,
+      inviterEmail: session.user.email || undefined,
+    }).catch(err => console.error("Failed to send invite email", err));
 
     return apiSuccess({ member }, 201);
   } catch {

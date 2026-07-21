@@ -27,7 +27,6 @@ test.describe("Phase 3: Collaboration & Permissions", () => {
     await expect(ownerPage.getByText("Top Secret Plan")).toBeVisible();
     await ownerPage.click("text=Open");
     await expect(ownerPage.locator("h1")).toContainText("Top Secret Plan");
-    const docUrl = ownerPage.url();
 
     // 2. Guest registers (but has no documents initially)
     await guestPage.goto("/register");
@@ -42,7 +41,8 @@ test.describe("Phase 3: Collaboration & Permissions", () => {
     await ownerPage.click("text=Share");
     await expect(ownerPage.locator("text=Share Document")).toBeVisible();
     await ownerPage.fill('input[placeholder="User\'s email address..."]', guestEmail);
-    await ownerPage.selectOption('select', 'EDITOR');
+    
+    // Default role is already EDITOR, just invite
     await ownerPage.click("button:has-text('Invite')");
     await expect(ownerPage.locator("text=User invited successfully!")).toBeVisible();
 
@@ -61,20 +61,25 @@ test.describe("Phase 3: Collaboration & Permissions", () => {
     await expect(guestPage.locator(".ProseMirror")).toHaveAttribute("contenteditable", "true");
 
     // 6. Owner changes Guest's role to VIEWER
-    const collaboratorRow = ownerPage.locator('div.bg-neutral-800\\/50', { hasText: guestEmail });
-    await collaboratorRow.locator('select').selectOption('VIEWER');
+    // Locate the row for the guest
+    const collaboratorRow = ownerPage.locator(`div:has-text("${guestEmail}")`).last();
+    // Open the custom dropdown (it defaults to showing 'editor')
+    await collaboratorRow.getByText("editor", { exact: true }).click();
+    // Click the 'viewer' option inside the portal
+    await ownerPage.locator('#dropdown-portal-root').getByText("viewer", { exact: true }).click();
+    
     // We should wait a moment for the PATCH request to complete
     await ownerPage.waitForTimeout(1000);
 
     // 7. Guest reloads and should now be a VIEWER (read-only)
     await guestPage.reload();
     await expect(guestPage.locator("h1")).toContainText("Top Secret Plan");
-    await expect(guestPage.locator("text=Role: VIEWER")).toBeVisible();
+    await expect(guestPage.locator("text=VIEWER")).toBeVisible();
     await expect(guestPage.locator(".ProseMirror")).toHaveAttribute("contenteditable", "false");
 
     // 8. Owner removes Guest entirely
     ownerPage.on('dialog', dialog => dialog.accept()); // Automatically accept the "Are you sure?" alert
-    await ownerPage.locator(`div:has-text("${guestEmail}")`).locator('button[title="Remove access"]').click();
+    await collaboratorRow.locator('button[title="Remove access"]').click();
     await ownerPage.waitForTimeout(500);
     await expect(ownerPage.locator(`text=${guestEmail}`)).not.toBeVisible();
 

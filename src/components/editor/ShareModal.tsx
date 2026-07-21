@@ -25,10 +25,8 @@ function RoleSelect({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
     function handleClickOutside(event: MouseEvent) {
       if (ref.current && !ref.current.contains(event.target as Node)) {
         // Also check if the click was inside the portal dropdown
@@ -69,7 +67,7 @@ function RoleSelect({
         <RiArrowDownSLine className={`w-4 h-4 ml-2 transition-transform ${open ? 'rotate-180' : ''}`} />
       </div>
 
-      {mounted && open && createPortal(
+      {open && createPortal(
         <div id="dropdown-portal-root">
           <div 
             style={{ 
@@ -119,6 +117,7 @@ export function ShareModal({ documentId }: { documentId: string }) {
     if (isOpen) {
       fetchMembers();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   async function fetchMembers() {

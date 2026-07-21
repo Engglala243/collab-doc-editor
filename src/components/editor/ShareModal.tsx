@@ -58,6 +58,7 @@ function RoleSelect({
   return (
     <div className={`relative min-w-[100px] ${className}`} ref={ref}>
       <div 
+        data-testid="role-trigger"
         className={`flex justify-between items-center bg-[#262626] border border-[#404040]/50 text-white cursor-pointer transition-colors hover:border-[#737373] ${
           isSmall ? "px-2.5 py-1.5 text-[12px] rounded-lg" : "px-4 py-2.5 text-[14px] rounded-xl"
         }`}
@@ -81,6 +82,7 @@ function RoleSelect({
             {(["EDITOR", "VIEWER"] as const).map(opt => (
               <div 
                 key={opt}
+                data-testid={`role-option-${opt.toLowerCase()}`}
                 className={`cursor-pointer transition-colors flex items-center ${
                   isSmall ? "px-3 py-2 text-[12px]" : "px-4 py-2.5 text-[14px]"
                 } ${
@@ -221,7 +223,7 @@ export function ShareModal({ documentId }: { documentId: string }) {
               ) : (
                 <div className="space-y-3 max-h-48 overflow-y-auto pr-2">
                   {members.map((m) => (
-                    <div key={m.id} className="flex justify-between items-center bg-[#262626]/50 p-3 rounded-xl border border-[#404040]/50">
+                    <div key={m.id} data-testid={`collaborator-row-${m.user.email}`} className="flex justify-between items-center bg-[#262626]/50 p-3 rounded-xl border border-[#404040]/50">
                       <div>
                         <p className="text-[14px] text-white font-medium">{m.user.name}</p>
                         <p className="text-[12px] text-[#a1a1aa]">{m.user.email}</p>

@@ -42,12 +42,21 @@ test.describe("Phase 3: Collaboration & Permissions", () => {
     await expect(ownerPage.locator("text=Share Document")).toBeVisible();
     await ownerPage.fill('input[placeholder="User\'s email address..."]', guestEmail);
     
-    // Default role is already EDITOR, just invite
+    // Wait for the invite API to complete
+    const inviteResponsePromise = ownerPage.waitForResponse(
+      response =>
+        response.url().includes("/collaborators") &&
+        response.request().method() === "POST" &&
+        response.ok()
+    );
+
     await ownerPage.click("button:has-text('Invite')");
+    await inviteResponsePromise;
     await expect(ownerPage.locator("text=User invited successfully!")).toBeVisible();
 
     // Verify guest appears in the collaborator list
-    await expect(ownerPage.locator(`text=${guestEmail}`)).toBeVisible();
+    const collaboratorRow = ownerPage.locator(`[data-testid="collaborator-row-${guestEmail}"]`);
+    await expect(collaboratorRow).toBeVisible({ timeout: 15000 });
 
     // 4. Guest checks dashboard and sees the document
     await guestPage.reload();
@@ -61,12 +70,13 @@ test.describe("Phase 3: Collaboration & Permissions", () => {
     await expect(guestPage.locator(".ProseMirror")).toHaveAttribute("contenteditable", "true");
 
     // 6. Owner changes Guest's role to VIEWER
-    // Locate the row for the guest
-    const collaboratorRow = ownerPage.locator(`div:has-text("${guestEmail}")`).last();
-    // Open the custom dropdown (it defaults to showing 'editor')
-    await collaboratorRow.getByText("editor", { exact: true }).click();
-    // Click the 'viewer' option inside the portal
-    await ownerPage.locator('#dropdown-portal-root').getByText("viewer", { exact: true }).click();
+    const roleTrigger = collaboratorRow.getByTestId("role-trigger");
+    await expect(roleTrigger).toBeVisible();
+    await roleTrigger.click();
+
+    const viewerOption = ownerPage.getByTestId("role-option-viewer");
+    await expect(viewerOption).toBeVisible();
+    await viewerOption.click();
     
     // We should wait a moment for the PATCH request to complete
     await ownerPage.waitForTimeout(1000);
